@@ -10,7 +10,7 @@ import Educator from "./pages/educator/Educator";
 import AddCourse from "./pages/educator/AddCourse";
 import MyCourses from "./pages/educator/MyCourses";
 import StudentEnrolled from "./pages/educator/StudentEnrolled";
-import Navbar from "./components/student/navbar";
+import Navbar from "./components/student/Navbar";
 
 function App() {
  
