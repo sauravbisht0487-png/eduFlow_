@@ -3,7 +3,7 @@ import { AppContext } from "../../context/AppContext";
 import SearchBar from "../../components/student/SearchBar";
 import { useParams } from "react-router-dom";
 import CourseCard from "../../components/student/CourseCard";
-import Footer from "../../components/student/footer";
+import Footer from "../../components/student/Footer";
 
 const CourseList = () => {
   const { navigate, allCourses } = useContext(AppContext);
