@@ -35,8 +35,6 @@ const Player = () => {
     if (!Array.isArray(enrolledCourses)) return;
 
     if (enrolledCourses.length === 0) {
-      // Still empty — could be mid-fetch, or genuinely no enrollments.
-      // Either way stop showing "Loading" forever once fetch has had a chance to run.
       return;
     }
 
@@ -44,14 +42,11 @@ const Player = () => {
     setCourseData(found || null);
     setLoading(false);
 
-    // Auto-open the first chapter and select the first lecture by default
     if (found && found.courseContent?.length > 0) {
       setOpenSections({ 0: true });
     }
   }, [enrolledCourses, courseId]);
 
-  // Safety net: if enrolledCourses is still empty after a few seconds
-  // (e.g. genuinely no enrollments, or the fetch failed), stop showing "Loading..."
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), 4000);
     return () => clearTimeout(timeout);
@@ -61,7 +56,6 @@ const Player = () => {
     setOpenSections((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
-  // Extract a YouTube video ID from a full URL so it can be embedded
   const getYoutubeId = (url) => {
     if (!url) return "";
     const match = url.match(
@@ -161,9 +155,9 @@ const Player = () => {
                 <ul className="pl-4 pb-2">
                   {chapter.chapterContent.map((lecture, i) => {
                     const isCompleted =
-                      progressData?.lectureCompleted.includes(
+                      progressData?.lectureCompleted?.includes(
                         lecture.lectureId
-                      );
+                      ) || false;
                     const isActive =
                       playerData?.lectureId === lecture.lectureId;
 
@@ -243,7 +237,7 @@ const Player = () => {
                 onClick={() => markLectureAsCompleted(playerData.lectureId)}
                 className="text-blue-600 text-sm font-medium hover:underline whitespace-nowrap"
               >
-                {progressData?.lectureCompleted.includes(playerData.lectureId)
+                {progressData?.lectureCompleted?.includes(playerData.lectureId)
                   ? "Completed"
                   : "Mark Complete"}
               </button>
@@ -258,7 +252,7 @@ const Player = () => {
           />
         )}
       </div>
-      <Rating/>
+      <Rating courseId={courseId} />
     </div>
     
     </>

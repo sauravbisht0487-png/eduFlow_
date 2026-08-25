@@ -1,26 +1,33 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../../context/AppContext";
-import { dummyEducatorData } from "../../assets/assets";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const MyCourses = () => {
-  const { allCourses, currency } = useContext(AppContext);
+  const { currency, backendUrl } = useContext(AppContext);
+  const { getToken } = useAuth();
   const [courses, setCourses] = useState(null);
 
   const fetchEducatorCourses = async () => {
-    // TODO: replace with real API call once backend is ready
-    // Filters allCourses (from dummyCourses) down to ones belonging to this educator
-    const educatorCourses = allCourses.filter(
-      (course) => course.educator === dummyEducatorData._id
-    );
-    setCourses(educatorCourses);
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/educator/courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setCourses(data.courses);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   useEffect(() => {
-    if (allCourses.length > 0) {
-      fetchEducatorCourses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allCourses]);
+    fetchEducatorCourses();
+  }, []);
 
   if (!courses) {
     return <p className="text-gray-500 text-sm">Loading courses...</p>;

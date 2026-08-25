@@ -1,17 +1,34 @@
-import React, { useEffect, useState } from "react";
-import { dummyStudentEnrolled } from "../../assets/assets";
+import React, { useContext, useEffect, useState } from "react";
+import { AppContext } from "../../context/AppContext";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const StudentEnrolled = () => {
+  const { backendUrl } = useContext(AppContext);
+  const { getToken } = useAuth();
   const [enrolledStudents, setEnrolledStudents] = useState(null);
 
   const fetchEnrolledStudents = async () => {
-    // TODO: replace with real API call once backend is ready
-    setEnrolledStudents(dummyStudentEnrolled);
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/educator/enrolled-students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setEnrolledStudents(data.enrolledStudents);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   useEffect(() => {
     fetchEnrolledStudents();
   }, []);
+
 
   if (!enrolledStudents) {
     return <p className="text-gray-500 text-sm">Loading students...</p>;

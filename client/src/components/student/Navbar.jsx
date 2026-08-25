@@ -1,11 +1,13 @@
 import React, { useContext, useState } from "react";
 import { assets } from "../../assets/assets";
 import { Link, useLocation } from "react-router-dom";
-import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
+import { useClerk, UserButton, useUser, useAuth } from "@clerk/clerk-react";
 import { AppContext } from "../../context/AppContext";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const Navbar = () => {
-  const { navigate, isEducator } = useContext(AppContext);
+  const { navigate, isEducator, setIsEducator, backendUrl } = useContext(AppContext);
   const location = useLocation();
   const [hoveredLink, setHoveredLink] = useState(null);
 
@@ -13,6 +15,29 @@ const Navbar = () => {
 
   const { openSignIn } = useClerk();
   const { user } = useUser();
+  const { getToken } = useAuth();
+
+  const becomeEducator = async () => {
+    try {
+      if (isEducator) {
+        navigate("/educator");
+        return;
+      }
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/educator/update-role`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setIsEducator(true);
+        toast.success(data.message);
+        navigate("/educator");
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
   return (
     <>
@@ -93,7 +118,7 @@ const Navbar = () => {
         {user && (
           <div className="flex flex-col gap-2 text-sm text-gray-600 sm:flex-row sm:items-center sm:gap-6">
             <button
-              onClick={() => navigate("/educator")}
+              onClick={becomeEducator}
               onMouseEnter={() => setHoveredLink("educator")}
               onMouseLeave={() => setHoveredLink(null)}
               className={`nav-link text-left w-fit transition-colors duration-200 ${

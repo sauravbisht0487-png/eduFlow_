@@ -4,9 +4,12 @@ import { AppContext } from "../../context/AppContext";
 import Loading from "../../components/student/Loading";
 import { assets } from "../../assets/assets";
 import Footer from "../../components/student/Footer";
-import YouTube from 'react-youtube'
 
-// Extracts the YouTube video ID from a full YouTube URL
+import axios from "axios";
+import { toast } from "react-toastify";
+// added
+import DOMPurify from "dompurify";
+
 const getYoutubeId = (url) => {
   if (!url) return null;
   const match = url.match(
@@ -26,30 +29,46 @@ const CourseDetails = () => {
   const [playerData, setPlayerData] = useState(null); // { videoId, lectureTitle }
 
   const {
-    allCourses,
     calculateRating,
     calculateNoOfLectures,
     calculateCourseDuration,
     calculateChapterTime,
     calculateLectureDuration,
     currency,
+    enrolledCourses,
+    purchaseCourse,
+    backendUrl,
   } = useContext(AppContext);
 
+  // Fetch the full course (including courseContent) directly by id
   const fetchCourseData = async () => {
-    const findCourse = allCourses.find((course) => course._id === id);
-
-    if (findCourse) {
-      setCourseData(findCourse);
-    } else if (allCourses && allCourses.length > 0) {
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/course/${id}`);
+      if (data.success) {
+        setCourseData(data.courseData);
+      } else {
+        setNotFound(true);
+        toast.error(data.message);
+      }
+    } catch (error) {
       setNotFound(true);
+      toast.error(error.message);
     }
   };
 
   useEffect(() => {
-    if (allCourses && allCourses.length > 0) {
-      fetchCourseData();
+    fetchCourseData();
+  }, [id]);
+
+  // Check if the logged-in user is already enrolled in this course
+  useEffect(() => {
+    if (enrolledCourses && enrolledCourses.length > 0 && courseData) {
+      const enrolled = enrolledCourses.some(
+        (course) => course._id === courseData._id
+      );
+      setIsAlreadyEnrolled(enrolled);
     }
-  }, [allCourses, id]);
+  }, [enrolledCourses, courseData]);
 
   const toggleSection = (index) => {
     setOpenSection((prev) => ({ ...prev, [index]: !prev[index] }));
@@ -60,6 +79,11 @@ const CourseDetails = () => {
     if (videoId) {
       setPlayerData({ videoId, lectureTitle: lecture.lectureTitle });
     }
+  };
+
+  const handleEnrollClick = () => {
+    if (isAlreadyEnrolled) return;
+    purchaseCourse(courseData._id);
   };
 
   if (notFound) {
@@ -86,6 +110,9 @@ const CourseDetails = () => {
       ? fullDescription
       : fullDescription.slice(0, 200) + "...";
 
+const sanitizedDescription = DOMPurify.sanitize(displayedDescription);
+
+
   return (
     <>
     <div className="px-4 sm:px-8 md:px-12 lg:px-24 pt-20 pb-20 flex flex-col md:flex-row gap-10 relative">
@@ -96,7 +123,8 @@ const CourseDetails = () => {
         </h1>
 
         <div className="text-gray-600 mt-3 leading-relaxed text-sm">
-          <span dangerouslySetInnerHTML={{ __html: displayedDescription }} />
+          
+        <span dangerouslySetInnerHTML={{ __html: sanitizedDescription }} />
           {isLongDescription && (
             <button
               onClick={() => setShowFullDescription((prev) => !prev)}
@@ -251,7 +279,15 @@ const CourseDetails = () => {
           )}
         </div>
 
-        <button className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-md font-medium transition">
+        <button
+          onClick={handleEnrollClick}
+          disabled={isAlreadyEnrolled}
+          className={`w-full mt-5 py-2.5 rounded-md font-medium transition text-white ${
+            isAlreadyEnrolled
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700"
+          }`}
+        >
           {isAlreadyEnrolled ? 'Already Enrolled':'Enroll Now'}
         </button>
 

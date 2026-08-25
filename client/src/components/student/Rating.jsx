@@ -1,13 +1,20 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Star } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { AppContext } from "../../context/AppContext";
 
 const Rating = ({ courseId }) => {
+  const { backendUrl } = useContext(AppContext);
+  const { getToken } = useAuth();
+
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [review, setReview] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) {
       toast.error("Please select a star rating");
       return;
@@ -17,12 +24,27 @@ const Rating = ({ courseId }) => {
       return;
     }
 
-    // TODO: replace with your API call
-    console.log("Submitting rating:", { courseId, rating, review });
+    try {
+      setSubmitting(true);
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/add-rating`,
+        { courseId, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    toast.success("Rating submitted");
-    setRating(0);
-    setReview("");
+      if (data.success) {
+        toast.success(data.message);
+        setRating(0);
+        setReview("");
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -54,9 +76,10 @@ const Rating = ({ courseId }) => {
 
       <button
         onClick={handleSubmit}
-        className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+        disabled={submitting}
+        className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
       >
-        Submit
+        {submitting ? "Submitting..." : "Submit"}
       </button>
     </div>
   );

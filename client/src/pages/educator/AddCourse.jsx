@@ -1,12 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { AppContext } from "../../context/AppContext";
 
 const AddCourse = () => {
   const quillRef = useRef(null);
   const editorRef = useRef(null);
+
+  const { backendUrl } = useContext(AppContext);
+  const { getToken } = useAuth();
 
   const [courseTitle, setCourseTitle] = useState("");
   const [coursePrice, setCoursePrice] = useState(0);
@@ -129,18 +135,31 @@ const AddCourse = () => {
         courseContent: chapters.map(({ collapsed, ...rest }) => rest),
       };
 
-      // TODO: no backend yet — replace this block with a real axios.post
-      // (FormData + image + Clerk token) once /api/educator/add-course exists
-      console.log("New course data:", courseData, image);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const formData = new FormData();
+      formData.append("courseData", JSON.stringify(courseData));
+      formData.append("image", image);
 
-      toast.success("Course added (not yet saved — backend pending)");
-      setCourseTitle("");
-      setCoursePrice(0);
-      setDiscount(0);
-      setImage(null);
-      setChapters([]);
-      quillRef.current.root.innerHTML = "";
+      const token = await getToken();
+
+      const { data } = await axios.post(
+        `${backendUrl}/api/educator/add-course`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+        setCourseTitle("");
+        setCoursePrice(0);
+        setDiscount(0);
+        setImage(null);
+        setChapters([]);
+        quillRef.current.root.innerHTML = "";
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
       toast.error(error.message);
     } finally {

@@ -1,22 +1,39 @@
 import { createContext, useEffect, useState } from "react";
-import { dummyCourses } from "../assets/assets";
 import { useNavigate } from "react-router-dom";
 import React from "react";
 import humanizeDuration from "humanize-duration";
+import { useAuth, useUser } from "@clerk/clerk-react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 export const AppContext = createContext();
 
 export const AppContextProvider = (props) => {
   const currency = import.meta.env.VITE_CURRENCY;
+  const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const navigate = useNavigate();
 
-  const [allCourses, setAllCourses] = useState([]);
-  const [isEducator, setIsEducator] = useState(true);
-  const [enrolledCourses,setEnrolledCourses]= useState([])
+  // These come from Clerk.
 
-  // Fetch All Courses
+  const { getToken } = useAuth();
+  const { user } = useUser();
+
+  const [allCourses, setAllCourses] = useState([]);
+  const [isEducator, setIsEducator] = useState(false);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+
+  // Fetch All Published Courses from backend
   const fetchAllCourses = async () => {
-    setAllCourses(dummyCourses);
+    try {
+      const { data } = await axios.get(`${backendUrl}/api/course/all`);
+      if (data.success) {
+        setAllCourses(data.courses);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   // Function to calculate average rating of a course
@@ -68,13 +85,67 @@ export const AppContextProvider = (props) => {
     });
     return totalLectures;
   };
-//fetch user enrolled courses
-const fetchUserEnrolledCourses= async()=>{
-  setEnrolledCourses(dummyCourses)
-}
+
+  // Fetch logged-in user's enrolled courses from backend
+  const fetchUserEnrolledCourses = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(`${backendUrl}/api/user/enrolled-courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setEnrolledCourses(data.enrolledCourses);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  // Purchase a course — creates Stripe checkout session and redirects
+  const purchaseCourse = async (courseId) => {
+    try {
+      if (!user) {
+        return toast.warn("Please login to purchase this course");
+      }
+
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/purchase`,
+        { courseId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.success) {
+        window.location.replace(data.url);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   useEffect(() => {
     fetchAllCourses();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserEnrolledCourses();
+    }
+  }, [user]);
+
+  useEffect(() => {
+  if (user) {
+    setIsEducator(user.publicMetadata?.role === "educator");
+  } else {
+    setIsEducator(false);
+  }
+}, [user]);
+
+ 
 
   const value = {
     currency,
@@ -82,12 +153,15 @@ const fetchUserEnrolledCourses= async()=>{
     navigate,
     calculateRating,
     isEducator,
-    setIsEducator,
+     setIsEducator,
     calculateChapterTime,
     calculateCourseDuration,
     calculateNoOfLectures,
     calculateLectureDuration,
-    enrolledCourses,fetchUserEnrolledCourses
+    enrolledCourses,
+    fetchUserEnrolledCourses,
+    purchaseCourse,
+    backendUrl,
   };
 
   return (
