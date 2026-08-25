@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const connectDB = async () => {
@@ -9,7 +10,10 @@ const connectDB = async () => {
     console.error("Database connection error:", err.message);
   });
 
-  await mongoose.connect(`${process.env.MONGODB_URI}/lms`);
+  await mongoose.connect(`${process.env.MONGODB_URI}/lms`, {
+    family: 4,
+    serverSelectionTimeoutMS: 30000,
+  });
 };
 
 export default connectDB;
